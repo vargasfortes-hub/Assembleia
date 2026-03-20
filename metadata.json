@@ -1,0 +1,5 @@
+{
+  "name": "Lista de Presença Meet",
+  "description": "Uma aplicação simples para coletar assinaturas de presença em reuniões do Google Meet ou similares.",
+  "requestFramePermissions": []
+}

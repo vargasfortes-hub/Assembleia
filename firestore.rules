@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: meetings
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required, 1-100 chars)
+    //   - hostId: string (required, UID)
+    //   - hostName: string (required)
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: meetings/{meetingId}/attendees
+    // Document ID: auto-generated (usually user UID)
+    // Fields:
+    //   - userId: string (required, UID)
+    //   - userName: string (required)
+    //   - userEmail: string (required)
+    //   - bloco: string (required, I or II)
+    //   - apartamento: string (required, 101-604)
+    //   - signedAt: string (required, ISO 8601)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isMeetingHost(meetingId) {
+      let meeting = get(/databases/$(database)/documents/meetings/$(meetingId)).data;
+      return isAuthenticated() && request.auth.uid == meeting.hostId;
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "vargasfortes@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+    }
+
+    function isValidMeeting(data) {
+      return data.keys().hasAll(['title', 'hostId', 'hostName', 'createdAt']) &&
+             data.keys().hasOnly(['title', 'hostId', 'hostName', 'createdAt']) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             data.hostId is string && data.hostId == request.auth.uid &&
+             data.hostName is string && data.hostName.size() > 0 &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidAttendee(data) {
+      return data.keys().hasAll(['userId', 'userName', 'userEmail', 'bloco', 'apartamento', 'signedAt']) &&
+             data.keys().hasOnly(['userId', 'userName', 'userEmail', 'bloco', 'apartamento', 'signedAt']) &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 &&
+             data.userEmail is string && data.userEmail.size() > 0 &&
+             data.bloco in ['I', 'II'] &&
+             data.apartamento is string && data.apartamento.size() >= 3 &&
+             isValidDateString(data.signedAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /meetings/{meetingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidMeeting(request.resource.data);
+      allow update, delete: if isOwner(resource.data.hostId) || isAdmin();
+
+      match /attendees/{attendeeId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && isValidAttendee(request.resource.data);
+      }
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

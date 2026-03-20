@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Uma sessão de reunião onde a presença é coletada.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Título da reunião" },
+        "hostId": { "type": "string", "description": "UID do criador da reunião" },
+        "hostName": { "type": "string", "description": "Nome do criador" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Data de criação" }
+      },
+      "required": ["title", "hostId", "hostName", "createdAt"]
+    },
+    "Attendee": {
+      "title": "Attendee",
+      "description": "Um participante que assinou a lista de presença.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID do participante" },
+        "userName": { "type": "string", "description": "Nome do participante" },
+        "userEmail": { "type": "string", "description": "Email do participante" },
+        "bloco": { "type": "string", "enum": ["I", "II"], "description": "Bloco do apartamento" },
+        "apartamento": { "type": "string", "description": "Número do apartamento" },
+        "signedAt": { "type": "string", "format": "date-time", "description": "Data da assinatura" }
+      },
+      "required": ["userId", "userName", "userEmail", "bloco", "apartamento", "signedAt"]
+    }
+  },
+  "firestore": {
+    "/meetings": {
+      "schema": "Meeting",
+      "description": "Coleção de reuniões criadas."
+    },
+    "/meetings/{meetingId}/attendees": {
+      "schema": "Attendee",
+      "description": "Subcoleção de participantes para uma reunião específica."
+    }
+  }
+}
